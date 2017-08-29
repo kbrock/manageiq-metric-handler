@@ -33,10 +33,11 @@ class MetricsHandler
 
     ems_id = payload[:ems_id]
     ems_ref = payload[:ems_ref]
+    ems_type = payload[:ems_klass]
     
-    obj = find_object(ems_id, ems_ref)
+    obj = find_object(ems_id, ems_klass, ems_ref)
     if obj.nil?
-      puts "metrics ems[#{"%3d" % ems_id}].vms[#{ "%9s" % ems_ref}] -- not found"
+      puts "metrics ems[#{"%3d" % ems_id}].#{ems_klass}[#{ "%9s" % ems_ref}] -- not found"
       return
     end
 
@@ -46,7 +47,6 @@ class MetricsHandler
     start_range    = payload[:start_range] || counter_values.keys.min
     end_range      = payload[:end_range]   || counter_values.keys.max
 
-
     print "metrics ems[#{"%3d" % ems_id}].vms[#{ "%9s" % ems_ref}] -- #{interval_name} #{start_range} - #{end_range}"
     obj.perf_process(interval_name, start_range, end_range, counters, counter_values)
     end_time = Time.now
@@ -54,9 +54,11 @@ class MetricsHandler
   end
 
   def close
-    log.info("Closing connection") if @clienta
-    @client.close if @client
-    @client = nil
+    if @client
+      log.info("Closing connection")
+      @client.close
+      @client = nil
+    end
   end
 
   def stop
@@ -66,6 +68,8 @@ class MetricsHandler
 
   private
 
+  KLASS_CACHE = {}
+
   def determine_range(start_range, end_range, counter_values)
     if start_range.nil? || end_range.nil?
     end
@@ -73,13 +77,10 @@ class MetricsHandler
     [start_range, end_range]
   end
 
-  def find_object(ems_id, ems_ref)
-    # ems = ExtManagementSystem.find(ems_id)
-    obj_type = ems_ref.split("-").first
-    case obj_type
-    when "vm"
-      Vm.find_by(:ems_id => ems_id, :ems_ref => ems_ref)
-    end
+  def find_object(ems_id, ems_klass, ems_ref)
+    return if ems_klass.nil? || ems_id.nil?
+    klass = KLASS_LOOKUP[ems_klass] ||= ems_klass.constantize
+    klass.find_by(:ems_id => ems_id, :ems_ref => ems_ref)
   end
 
   def client

@@ -33,8 +33,9 @@ class MetricsHandler
 
     ems_id = payload[:ems_id]
     ems_ref = payload[:ems_ref]
+    klass = payload[:ems_klass]
     
-    obj = find_object(ems_id, ems_ref)
+    obj = find_object(klass, ems_id, ems_ref)
     if obj.nil?
       puts "metrics ems[#{"%3d" % ems_id}].vms[#{ "%9s" % ems_ref}] -- not found"
       return
@@ -73,13 +74,8 @@ class MetricsHandler
     [start_range, end_range]
   end
 
-  def find_object(ems_id, ems_ref)
-    # ems = ExtManagementSystem.find(ems_id)
-    obj_type = ems_ref.split("-").first
-    case obj_type
-    when "vm"
-      Vm.find_by(:ems_id => ems_id, :ems_ref => ems_ref)
-    end
+  def find_object(klass, ems_id, ems_ref)
+    klass.constantize.find_by(:ems_id => ems_id, :ems_ref => ems_ref)
   end
 
   def client
